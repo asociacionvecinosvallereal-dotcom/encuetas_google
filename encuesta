@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Encuesta de satisfacción</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--p:#11807E;--ink:#1E2A2D;--muted:#5C6B6E;--bg:#F5F7F5;--surface:#fff;--line:#E3E8E6;--star:#E8A100}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{background:var(--surface);width:100%;max-width:440px;border-radius:20px;box-shadow:0 12px 40px rgba(20,40,40,.10);overflow:hidden}
+.head{padding:26px 24px 18px;text-align:center;border-bottom:1px solid var(--line)}
+.logo{width:62px;height:62px;border-radius:16px;background:color-mix(in srgb,var(--p) 14%,#fff);color:var(--p);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:24px;margin:0 auto 12px;overflow:hidden}
+.logo img{width:100%;height:100%;object-fit:cover}
+.cname{font-size:18px;font-weight:800}
+.csub{font-size:13px;color:var(--muted);margin-top:2px}
+.body{padding:24px}
+.q{font-size:17px;font-weight:700;text-align:center;margin-bottom:6px}
+.qs{font-size:13.5px;color:var(--muted);text-align:center;margin-bottom:20px;line-height:1.5}
+.stars{display:flex;justify-content:center;gap:8px;margin:8px 0 4px}
+.star{font-size:42px;line-height:1;color:var(--line);cursor:pointer;transition:transform .08s,color .12s;user-select:none}
+.star:active{transform:scale(.88)}
+.star.on{color:var(--star)}
+.scale{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:8px;padding:0 4px}
+textarea{width:100%;border:1.5px solid var(--line);border-radius:12px;padding:12px;font-family:inherit;font-size:14.5px;color:var(--ink);min-height:96px;resize:vertical;margin-top:6px}
+textarea:focus{outline:none;border-color:var(--p)}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:none;border-radius:12px;padding:14px;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;margin-top:14px;text-decoration:none}
+.btn-p{background:var(--p);color:#fff}
+.btn-g{background:#4285F4;color:#fff}
+.btn-ghost{background:transparent;color:var(--muted);font-weight:600;font-size:13.5px;margin-top:10px;padding:8px}
+.icon{font-size:48px;text-align:center;margin-bottom:6px}
+.center{text-align:center}
+.muted{color:var(--muted);font-size:14px;line-height:1.55;text-align:center;margin-top:6px}
+.gnote{text-align:center;margin-top:14px}
+.glink{color:var(--p);font-weight:700;font-size:13.5px;text-decoration:none;border-bottom:1px solid color-mix(in srgb,var(--p) 40%,#fff);padding-bottom:1px}
+.hide{display:none}
+.spin{text-align:center;color:var(--muted);padding:30px;font-size:14px}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="head">
+    <div class="logo" id="logo">+</div>
+    <div class="cname" id="cname">Clínica</div>
+    <div class="csub" id="csub"></div>
+  </div>
+  <div class="body" id="body">
+    <div class="spin">Cargando…</div>
+  </div>
+</div>
+
+<script>
+var SB_URL='https://hhgciopbwwrnwklkmpjq.supabase.co';
+var SB_KEY='sb_publishable_8edLaa3_ExESWS-3nNLB4g_iedGLqXf';
+var SB=null;
+try{ if(window.supabase&&window.supabase.createClient) SB=window.supabase.createClient(SB_URL,SB_KEY); }catch(e){ SB=null; }
+
+function qp(k){var m=new RegExp('[?&]'+k+'=([^&]*)').exec(location.search);return m?decodeURIComponent(m[1]):'';}
+var CID=qp('c'), PID=qp('p'), DID=qp('d');
+var CFG={nombre:'Clínica',sub:'',logo:null,color:'#11807E',google:'',todos:true};
+var ROWID=null, RATING=0;
+
+function $(id){return document.getElementById(id);}
+function todayISO(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function genId(){return 'e'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+function googleUrl(raw){raw=(raw||'').trim();if(!raw)return '';if(/^https?:\/\//i.test(raw))return raw;return 'https://search.google.com/local/writereview?placeid='+encodeURIComponent(raw);}
+
+function applyConfig(){
+  document.documentElement.style.setProperty('--p',CFG.color||'#11807E');
+  $('cname').textContent=CFG.nombre||'Clínica';
+  $('csub').textContent=CFG.sub||'';
+  if(CFG.logo){ $('logo').innerHTML='<img src="'+CFG.logo+'">'; }
+  else { $('logo').textContent=(CFG.nombre||'C').trim().charAt(0).toUpperCase(); }
+  document.title='Encuesta · '+(CFG.nombre||'Clínica');
+}
+
+function loadConfig(){
+  if(!SB){ renderRating(); return; }
+  SB.from('cl_config').select('*').then(function(r){
+    if(r&&!r.error&&r.data&&r.data.length){
+      var c=r.data[0];
+      CFG.nombre=c.nombre||CFG.nombre; CFG.sub=c.sub||''; CFG.logo=c.logo||null;
+      CFG.color=c.color||CFG.color; CFG.google=c.google_review||''; CFG.todos=(c.encuesta_todos!==false);
+    }
+    applyConfig(); renderRating();
+  },function(){ applyConfig(); renderRating(); });
+}
+
+function renderRating(){
+  applyConfig();
+  var stars='';
+  for(var i=1;i<=5;i++){ stars+='<span class="star" data-n="'+i+'">★</span>'; }
+  $('body').innerHTML=
+    '<div class="q">¿Cómo fue tu atención?</div>'+
+    '<div class="qs">Toca las estrellas para calificar tu experiencia con nosotros.</div>'+
+    '<div class="stars" id="stars">'+stars+'</div>'+
+    '<div class="scale"><span>Mala</span><span>Excelente</span></div>';
+  var els=document.querySelectorAll('.star');
+  els.forEach(function(s){
+    s.addEventListener('mouseenter',function(){ paint(parseInt(s.getAttribute('data-n'),10)); });
+    s.addEventListener('click',function(){ pick(parseInt(s.getAttribute('data-n'),10)); });
+  });
+  $('stars').addEventListener('mouseleave',function(){ paint(RATING); });
+}
+function paint(n){ document.querySelectorAll('.star').forEach(function(s){ s.classList.toggle('on', parseInt(s.getAttribute('data-n'),10)<=n); }); }
+
+function saveRating(stars,canal){
+  RATING=stars; ROWID=genId();
+  var row={id:ROWID,pid:PID,did:DID,cita_id:CID,fecha:todayISO(),estrellas:stars,comentario:'',canal:canal};
+  if(SB){ SB.from('cl_encuestas').insert(row).then(function(){},function(){}); }
+}
+function patchRow(patch){ if(SB&&ROWID){ SB.from('cl_encuestas').update(patch).eq('id',ROWID).then(function(){},function(){}); } }
+
+function pick(n){
+  paint(n);
+  if(n>=4){ saveRating(n,'google'); setTimeout(showHigh,180); }
+  else { saveRating(n,'privado'); setTimeout(showLow,180); }
+}
+
+function showHigh(){
+  var g=googleUrl(CFG.google);
+  var html='<div class="icon">⭐</div>'+
+    '<div class="q">¡Gracias por tu confianza!</div>'+
+    '<div class="muted">Nos alegra mucho haberte atendido bien.</div>';
+  if(g){
+    html+='<div class="muted" style="margin-top:14px">¿Nos ayudas compartiéndolo en Google? Toma 20 segundos y nos ayuda muchísimo.</div>'+
+      '<a class="btn btn-g" id="goG" href="'+g+'" target="_blank" rel="noopener">Escribir reseña en Google</a>'+
+      '<button class="btn-ghost" onclick="finish(\'¡Gracias por tu tiempo!\')">Ahora no, gracias</button>';
+  } else {
+    html+='<textarea id="cmt" placeholder="¿Quieres dejarnos un comentario? (opcional)"></textarea>'+
+      '<button class="btn btn-p" onclick="sendComment(\'google\',\'¡Gracias por tu opinión!\')">Enviar</button>';
+  }
+  $('body').innerHTML=html;
+  var gb=$('goG'); if(gb){ gb.addEventListener('click',function(){ setTimeout(function(){ finish('¡Gracias por tu reseña!'); },400); }); }
+}
+
+function showLow(){
+  var g=googleUrl(CFG.google);
+  var html='<div class="icon">🙏</div>'+
+    '<div class="q">Lamentamos no haber cumplido</div>'+
+    '<div class="muted">¿Qué podríamos mejorar? Tu comentario llega directo a la dirección de la clínica.</div>'+
+    '<textarea id="cmt" placeholder="Cuéntanos qué pasó o qué podemos mejorar…" autofocus></textarea>'+
+    '<button class="btn btn-p" onclick="sendComment(\'privado\',\'Gracias, lo tomaremos en cuenta para mejorar.\')">Enviar comentario</button>';
+  if(CFG.todos && g){
+    html+='<div class="gnote"><a class="glink" href="'+g+'" target="_blank" rel="noopener">También puedes dejar tu opinión pública en Google</a></div>';
+  }
+  $('body').innerHTML=html;
+}
+
+function sendComment(canal,msg){
+  var t=$('cmt')?$('cmt').value.trim():'';
+  patchRow({comentario:t,canal:canal});
+  finish(msg);
+}
+
+function finish(msg){
+  $('body').innerHTML='<div class="icon">✅</div><div class="q center">'+msg+'</div><div class="muted">Puedes cerrar esta ventana.</div>';
+}
+
+loadConfig();
+</script>
+</body>
+</html>
